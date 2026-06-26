@@ -41,8 +41,6 @@ src/
 └── main.jsx                 # Uygulama kök render noktası
 ```
 
-````
-
 ## 💻 Kurulum ve Çalıştırma
 
 Projeyi yerel bilgisayarınızda ayağa kaldırmak için aşağıdaki adımları takip edebilirsiniz:
@@ -69,7 +67,9 @@ npm run dev
 
 ```
 
-Tarayıcınızda `http://localhost:5173` adresine giderek projeyi canlı olarak test edebilirsiniz. 4. **Üretim (Production) Derlemesi Almak İçin:**
+Tarayıcınızda `http://localhost:5173` adresine giderek projeyi canlı olarak test edebilirsiniz.
+
+4. **Üretim (Production) Derlemesi Almak İçin:**
 
 ```bash
 npm run build
@@ -79,8 +79,3 @@ npm run build
 ## ⚙️ Lisans ve Kullanım Kuralları
 
 Bu proje eğitim, frontend durum mimarisi simülasyonu ve UI/UX prototipleme amacıyla geliştirilmiştir. Herhangi bir ticari ya da resmi veri tabanı bağlantısı (backend) barındırmaz, veriler yerel React state'leri üzerinde simüle edilir.
-
-```
-
-```
-````
