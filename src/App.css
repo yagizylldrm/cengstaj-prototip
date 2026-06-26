@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+@theme {
+    /* Çankaya Üniversitesi Kurumsal Renk Kodları */
+    --color-cu-lacivert: #0f2537;
+    --color-cu-altin: #ffd100;
+    --color-cu-kirmizi: #990000;
+    --color-cu-bg: #f4f6f9;
+}

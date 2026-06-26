@@ -1,0 +1,54 @@
+# Bağımlılıklar (Dependencies)
+node_modules/
+/jspm_packages/
+
+# Derleme Çıktıları (Build Outputs)
+dist/
+tmp/
+out/
+build/
+.next/
+.nuxt/
+
+# Vite ve Geliştirici Önbellekleri (Cache)
+.vite/
+.turbo/
+.eslintcache
+.parcel-cache
+.cache/
+
+# Günlük Dosyaları (Logs)
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Çevre Değişkenleri ve Gizli Dosyalar (Environment / Secrets)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.pem
+*.key
+
+# Editör ve IDE Ayarları (IDE / Editors)
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+.project
+.classpath
+.settings/
+
+# İşletim Sistemine Özel Gereksiz Dosyalar (OS Specific)
+.DS_Store
+Thumbs.db
+desktop.ini
