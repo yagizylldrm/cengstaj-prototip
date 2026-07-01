@@ -1,18 +1,35 @@
+using System.Text;
+using System.Threading.RateLimiting;
 using CengStaj.Backend.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer; // 💡 JWT için eklendi
+using Microsoft.AspNetCore.RateLimiting; // 💡 Rate Limiting için eklendi
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens; // 💡 JWT için eklendi
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// PostgreSQL UTC zaman dilimi yapılandırması
-// Postgres ile konuşurken tüm DateTime nesnelerini otomatik olarak UTC kabul eder.
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
+// 🔒 GÜVENLİK FIX'I: Kaba kuvvet saldırılarına karşı Rate Limiting (Dakikada maks 5 istek)
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter(
+        "AuthPolicy",
+        opt =>
+        {
+            opt.PermitLimit = 5;
+            opt.Window = TimeSpan.FromMinutes(1);
+            opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            opt.QueueLimit = 0;
+        }
+    );
+});
 
 builder
     .Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // Nesne döngülerini otomatik olarak kırar ve JSON çökmelerini önler
         options.JsonSerializerOptions.ReferenceHandler = System
             .Text
             .Json
@@ -21,10 +38,33 @@ builder
             .IgnoreCycles;
     });
 
-// .NET 10 NATIVE OPENAPI DESTEĞİ (Eski SwaggerGen yerine)
+// 🔒 GÜVENLİK FIX'I: JWT Kimlik Doğrulama Katmanının Tanımlanması
+var jwtKey = "CengStajVerySecureSecretKey2026!SignatureRef123456"; // En az 32 karakter olmalıdır
+var keyBytes = Encoding.UTF8.GetBytes(jwtKey);
+
+builder
+    .Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = "CengStajBackend",
+            ValidAudience = "CengStajFrontend",
+            IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
+            ClockSkew = TimeSpan.Zero,
+        };
+    });
+
 builder.Services.AddOpenApi();
 
-// Güvenli bağlantı dizesi kontrolü
 string connectionString =
     builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException(
@@ -33,7 +73,6 @@ string connectionString =
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
-// React Frontend Bağlantısı İçin CORS Politikası
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(
@@ -49,10 +88,7 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    // .NET 10 Yerel OpenAPI JSON çıktısını haritalar (/openapi/v1.json)
     app.MapOpenApi();
-
-    // Scalar API Playground arayüzünü aktif eder
     app.MapScalarApiReference(options =>
     {
         options.WithTitle("CENG Staj Bilgi Sistemi API");
@@ -61,10 +97,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseCors("AllowReact");
 
-app.UseAuthorization();
+// 💡 KRİTİK: Sıralama çok önemlidir!
+app.UseRateLimiter();
+app.UseAuthentication(); // 🔒 Kimlik doğrulama aktif
+app.UseAuthorization(); // 🔒 Yetkilendirme aktif
 
 app.MapControllers();
 

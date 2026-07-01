@@ -1,5 +1,6 @@
 using CengStaj.Backend.Data;
 using CengStaj.Backend.Models;
+using Microsoft.AspNetCore.Authorization; // 💡 Eklendi
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +8,7 @@ namespace CengStaj.Backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize] // 🔒 GÜVENLİK FIX'I: Geçerli bir JWT Token'ı olmayan hiç kimse bu kapıdan içeri giremez!
     public class InternshipController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -17,10 +19,22 @@ namespace CengStaj.Backend.Controllers
         }
 
         // --- ÖĞRENCİNİN AKTİF STAJ DURUMUNU VE PROFİLİNİ GETİRME ---
-        // GET: api/internship/student/{studentNo}
         [HttpGet("student/{studentNo}")]
         public async Task<IActionResult> GetStudentInternship(string studentNo)
         {
+            // 🔒 BOLA / IDOR FIX'I: İstek atan kişinin token'ındaki isim ile istenen öğrenci no eşleşmeli
+            var loggedInUser = User.Identity?.Name;
+            if (loggedInUser != studentNo)
+            {
+                return StatusCode(
+                    403,
+                    new
+                    {
+                        message = "Yetkisiz işlem: Başka bir öğrencinin verilerine erişemezsiniz!",
+                    }
+                );
+            }
+
             var student = await _context.Students.FirstOrDefaultAsync(s =>
                 s.StudentNo == studentNo
             );
@@ -51,10 +65,22 @@ namespace CengStaj.Backend.Controllers
         }
 
         // --- ADIMSAL STAJ VERİSİ KAYDETME / GÜNCELLEME (UPSERT) ---
-        // POST: api/internship/save-step
         [HttpPost("save-step")]
         public async Task<IActionResult> SaveStep([FromBody] SaveStepDto dto)
         {
+            // 🔒 BOLA / IDOR FIX'I: İstek gövdesindeki (body) no ile token sahibi doğrulanıyor
+            var loggedInUser = User.Identity?.Name;
+            if (loggedInUser != dto.StudentNo)
+            {
+                return StatusCode(
+                    403,
+                    new
+                    {
+                        message = "Yetkisiz işlem: Başka bir öğrenci adına veri kaydedemezsiniz!",
+                    }
+                );
+            }
+
             if (dto.StartDate.HasValue)
             {
                 if (dto.StartDate.Value.Date < DateTime.UtcNow.Date)
@@ -63,7 +89,6 @@ namespace CengStaj.Backend.Controllers
                         new { message = "Staj başlangıç tarihi geçmiş bir tarih olamaz!" }
                     );
                 }
-
                 if (dto.EndDate.HasValue && dto.EndDate.Value.Date <= dto.StartDate.Value.Date)
                 {
                     return BadRequest(
@@ -74,6 +99,7 @@ namespace CengStaj.Backend.Controllers
                     );
                 }
             }
+
             var student = await _context.Students.AnyAsync(s => s.StudentNo == dto.StudentNo);
             if (!student)
                 return BadRequest(new { message = "Öğrenci bulunamadı!" });
@@ -161,13 +187,22 @@ namespace CengStaj.Backend.Controllers
         }
 
         // --- BAŞVURUYU RESMİ OLARAK KİLİTLEME (FINALIZE) ---
-        // POST: api/internship/finalize/{id}
         [HttpPost("finalize/{id}")]
         public async Task<IActionResult> FinalizeApplication(int id)
         {
             var internship = await _context.Internships.FindAsync(id);
             if (internship == null)
                 return NotFound(new { message = "Staj kaydı bulunamadı." });
+
+            // 🔒 BOLA / IDOR FIX'I: URL'den gönderilen staj ID'sinin gerçek sahibi ile token sahibi eşleşmeli
+            var loggedInUser = User.Identity?.Name;
+            if (internship.StudentNo != loggedInUser)
+            {
+                return StatusCode(
+                    403,
+                    new { message = "Yetkisiz işlem: Bu staj kaydini mühürleme yetkiniz yok!" }
+                );
+            }
 
             internship.IsFinalized = true;
             await _context.SaveChangesAsync();
@@ -181,17 +216,23 @@ namespace CengStaj.Backend.Controllers
         }
 
         // --- YÖNETİM KONSOLU: FİRMA ADI VE TARİH GÜNCELLEME ---
-        // PUT: api/internship/update-company
         [HttpPut("update-company")]
         public async Task<IActionResult> UpdateCompany([FromBody] UpdateCompanyDto dto)
         {
+            var loggedInUser = User.Identity?.Name;
+            if (loggedInUser != dto.StudentNo)
+            {
+                return StatusCode(
+                    403,
+                    new { message = "Yetkisiz işlem: Bu staj kaydını düzenleme yetkiniz yok!" }
+                );
+            }
+
             var internship = await _context.Internships.FirstOrDefaultAsync(i =>
                 i.StudentNo == dto.StudentNo
             );
             if (internship == null)
-            {
                 return NotFound(new { message = "Staj kaydı bulunamadı!" });
-            }
 
             if (
                 dto.StartDate.HasValue
@@ -208,7 +249,6 @@ namespace CengStaj.Backend.Controllers
             }
 
             internship.CompanyName = dto.CompanyName;
-            // Npgsql UTC zaman dilimi koruması
             internship.StartDate = dto.StartDate.HasValue
                 ? dto.StartDate.Value.ToUniversalTime()
                 : null;
@@ -219,10 +259,18 @@ namespace CengStaj.Backend.Controllers
         }
 
         // --- YÖNETİM KONSOLU: STAJ AMİRİ TÜM BİLGİLERİNİ GÜNCELLEME ---
-        // PUT: api/internship/update-supervisor
         [HttpPut("update-supervisor")]
         public async Task<IActionResult> UpdateSupervisor([FromBody] UpdateSupervisorDto dto)
         {
+            var loggedInUser = User.Identity?.Name;
+            if (loggedInUser != dto.StudentNo)
+            {
+                return StatusCode(
+                    403,
+                    new { message = "Yetkisiz işlem: Bu amir bilgisini düzenleme yetkiniz yok!" }
+                );
+            }
+
             var internship = await _context
                 .Internships.Include(i => i.Supervisor)
                 .FirstOrDefaultAsync(i => i.StudentNo == dto.StudentNo);
@@ -257,7 +305,6 @@ namespace CengStaj.Backend.Controllers
         );
     }
 
-    // --- STAJ ADIM TRANSFER OBJELERİ (DTOs) ---
     public record SaveStepDto(
         string StudentNo,
         string AcademicYear,

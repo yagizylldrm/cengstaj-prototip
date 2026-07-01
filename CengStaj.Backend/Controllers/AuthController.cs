@@ -1,15 +1,26 @@
+using System.Collections.Concurrent; // 💡 Güvenli hafıza sözlüğü için eklendi
+using System.IdentityModel.Tokens.Jwt; // 💡 JWT üretimi için eklendi
+using System.Security.Claims;
+using System.Security.Cryptography; // 💡 Kriptografi için eklendi
+using System.Text;
 using CengStaj.Backend.Data;
 using CengStaj.Backend.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 namespace CengStaj.Backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [EnableRateLimiting("AuthPolicy")] // 🔒 Brute force koruması
     public class AuthController : ControllerBase
     {
         private readonly AppDbContext _context;
+
+        // 🔒 Şifre sıfırlama kodlarını hafızada asenkron güvenli tutmak için static sözlük
+        private static readonly ConcurrentDictionary<string, string> _resetCodes = new();
 
         public AuthController(AppDbContext context)
         {
@@ -17,7 +28,6 @@ namespace CengStaj.Backend.Controllers
         }
 
         // --- ÖĞRENCİ KAYIT ENDPOINT'İ ---
-        // POST: api/auth/register
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
@@ -54,8 +64,7 @@ namespace CengStaj.Backend.Controllers
             return Ok(new { message = "Kayıt işlemi başarıyla tamamlandı." });
         }
 
-        // --- ÖĞRENCİ GİRİŞ ENDPOINT'İ ---
-        // POST: api/auth/login
+        // --- ÖĞRENCİ GİRİŞ ENDPOINT'İ (JWT TOKEN ÜRETİMLİ) ---
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
@@ -63,21 +72,38 @@ namespace CengStaj.Backend.Controllers
                 s.StudentNo == dto.StudentNo
             );
 
-            if (student == null)
+            if (student == null || !BCrypt.Net.BCrypt.Verify(dto.Password, student.PasswordHash))
             {
                 return Unauthorized(new { message = "Öğrenci numarası veya şifre hatalı!" });
             }
 
-            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(dto.Password, student.PasswordHash);
-            if (!isPasswordValid)
+            // 🔒 GÜVENLİK FIX'I: Kriptografik JWT Token oluşturulması
+            var claims = new[]
             {
-                return Unauthorized(new { message = "Öğrenci numarası veya şifre hatalı!" });
-            }
+                new Claim(ClaimTypes.Name, student.StudentNo), // Token içerisine öğrenci no gömülüyor
+                new Claim(ClaimTypes.Role, "Student"),
+            };
+
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes("CengStajVerySecureSecretKey2026!SignatureRef123456")
+            );
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: "CengStajBackend",
+                audience: "CengStajFrontend",
+                claims: claims,
+                expires: DateTime.UtcNow.AddDays(2), // 2 Günlük güvenli oturum süresi
+                signingCredentials: creds
+            );
+
+            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
             return Ok(
                 new
                 {
                     message = "Giriş başarılı.",
+                    token = tokenString, // 💡 Token ön yüze teslim ediliyor
                     studentNo = student.StudentNo,
                     firstName = student.FirstName,
                     lastName = student.LastName,
@@ -85,8 +111,7 @@ namespace CengStaj.Backend.Controllers
             );
         }
 
-        // --- ŞİFRE SIFIRLAMA TALEBİ (MOCK OTP) ---
-        // POST: api/auth/forgot-password
+        // --- ŞİFRE SIFIRLAMA TALEBİ ---
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
         {
@@ -100,15 +125,38 @@ namespace CengStaj.Backend.Controllers
                 );
             }
 
-            var mockOtp = new Random().Next(100000, 999999).ToString();
-            return Ok(new { message = "Şifre sıfırlama kodu oluşturuldu.", otp = mockOtp });
+            // 🔒 GÜVENLİK FIX'I: Kriptografik güvenli 6 haneli OTP
+            var secureOtp = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+            _resetCodes[dto.StudentNo] = secureOtp;
+
+            // 🔒 GÜVENLİK FIX'I: Yanıttan kaldırıldı, sadece terminale basılıyor (Sızıntı Önleme)
+            Console.WriteLine(
+                $"\n[🔒 GÜVENLİK SİMÜLASYONU] {dto.StudentNo} için Şifre Sıfırlama Kodu: {secureOtp}\n"
+            );
+
+            return Ok(
+                new
+                {
+                    message = "Şifre sıfırlama kodu oluşturuldu. Lütfen terminal dökümündeki kodu girin.",
+                }
+            );
         }
 
         // --- YENİ ŞİFREYİ VERİTABANINA MÜHÜRLEME ---
-        // POST: api/auth/reset-password
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
         {
+            // 🔒 GÜVENLİK FIX'I: OTP Kodu zorunlu olarak hafızadakiyle doğrulanıyor
+            if (
+                !_resetCodes.TryGetValue(dto.StudentNo, out var storedOtp)
+                || storedOtp != dto.OtpCode
+            )
+            {
+                return BadRequest(
+                    new { message = "Geçersiz veya süresi dolmuş şifre sıfırlama kodu!" }
+                );
+            }
+
             var student = await _context.Students.FirstOrDefaultAsync(s =>
                 s.StudentNo == dto.StudentNo
             );
@@ -118,6 +166,7 @@ namespace CengStaj.Backend.Controllers
             }
 
             student.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+            _resetCodes.TryRemove(dto.StudentNo, out _); // Replay attack koruması (tek kullanımlık)
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Şifreniz başarıyla güncellendi!" });
@@ -125,10 +174,9 @@ namespace CengStaj.Backend.Controllers
 
         public record ForgotPasswordDto(string StudentNo);
 
-        public record ResetPasswordDto(string StudentNo, string NewPassword);
+        public record ResetPasswordDto(string StudentNo, string NewPassword, string OtpCode);
     }
 
-    // --- DATA TRANSFER OBJECTS (DTOs) ---
     public record RegisterDto(
         string StudentNo,
         string Password,
