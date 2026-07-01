@@ -135,6 +135,9 @@ export default function LoginPortal({
             const result = await response.json();
 
             if (response.ok) {
+                // 🔒 GÜVENLİK FIX'I: Backend'den dönen kriptografik JWT token yerel hafızaya mühürleniyor
+                localStorage.setItem("token", result.token);
+
                 setLoginSuccess(true);
                 setTimeout(() => {
                     onLoginSuccess(result.studentNo);
@@ -233,9 +236,13 @@ export default function LoginPortal({
             const result = await response.json();
 
             if (response.ok) {
-                setGeneratedOtp(result.otp);
+                // 💡 FIX: result.otp bağımlılığı kaldırıldı.
                 setMode("forgot_otp");
-                alert(`${t.otpAlert} [ ${result.otp} ]`);
+                alert(
+                    lang === "tr"
+                        ? "Şifre sıfırlama kodu oluşturuldu! Lütfen .NET sunucu terminalindeki/konsolundaki kodu bulun."
+                        : "Reset code generated! Please find the code in your .NET server console.",
+                );
             } else {
                 alert(result.message || "Hata oluştu.");
             }
@@ -247,14 +254,18 @@ export default function LoginPortal({
 
     const handleOtpVerify = (e) => {
         e.preventDefault();
+
+        // 💡 FIX: Eğer şifre sıfırlama aşamasındaysak ön kontrolü pas geçip direkt şifre yenileme moduna aktar.
+        // Çünkü asıl doğrulama finalde backend tarafından yapılacak.
+        if (mode === "forgot_otp") {
+            setMode("reset");
+            return;
+        }
+
+        // Normal ilk kayıt aktivasyon kodu kontrolü (Yerel Math.random lojiği)
         if (otpInput === generatedOtp) {
-            if (mode === "forgot_otp") {
-                setPassword("");
-                setMode("reset");
-            } else {
-                alert(t.otpSuccess);
-                setMode("login");
-            }
+            alert(t.otpSuccess);
+            setMode("login");
             setOtpInput("");
         } else {
             alert(t.otpWrong);
@@ -285,6 +296,7 @@ export default function LoginPortal({
                     body: JSON.stringify({
                         studentNo: studentNo.trim(),
                         newPassword: password.trim(),
+                        otpCode: otpInput.trim(), // 💡 FIX: otpInput içindeki kod nihai kontrol için backend'e gidiyor
                     }),
                 },
             );
@@ -293,8 +305,10 @@ export default function LoginPortal({
             if (response.ok) {
                 alert(t.resetSuccess);
                 setPassword("");
+                setOtpInput(""); // Formu temizle
                 setMode("login");
             } else {
+                // 💡 Backend'den gelen "Geçersiz veya süresi dolmuş kod" hatası artık buraya düşecek!
                 alert(result.message || "Şifre güncellenemedi.");
             }
         } catch (error) {

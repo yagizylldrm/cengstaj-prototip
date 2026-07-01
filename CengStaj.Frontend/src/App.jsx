@@ -244,6 +244,9 @@ export default function CengInternshipPortal() {
                 setLang={setLang}
                 studentNo={studentNo}
                 onLogout={() => {
+                    // 🔒 GÜVENLİK FIX'I: Oturum kapatıldığında kriptografik anahtar yerel hafızadan imha ediliyor
+                    localStorage.removeItem("token");
+
                     setIsLoggedIn(false);
                     setActiveTab("Home");
                 }}

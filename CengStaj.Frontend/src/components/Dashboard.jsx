@@ -46,8 +46,15 @@ export default function Dashboard({
     useEffect(() => {
         async function loadDashboardData() {
             try {
+                // Eski Hali: const response = await fetch(`http://localhost:5202/api/internship/student/${studentNo}`);
+                // Yeni Hali:
                 const response = await fetch(
                     `http://localhost:5202/api/internship/student/${studentNo}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Kapıyı açan token ekleniyor
+                        },
+                    },
                 );
                 if (response.ok) {
                     const result = await response.json();
@@ -334,16 +341,12 @@ export default function Dashboard({
                 "http://localhost:5202/api/internship/save-step",
                 {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Eklendi
+                    },
                     body: JSON.stringify({
-                        studentNo: studentNo,
-                        academicYear: stajData.academicYear,
-                        courseCode: stajData.courseCode,
-                        internshipType: stajData.type,
-                        companyName: stajData.company,
-                        startDate: stajData.startDate,
-                        endDate: stajData.endDate,
-                        targetStep: 2,
+                        /* ... */
                     }),
                 },
             );
@@ -367,22 +370,12 @@ export default function Dashboard({
                 "http://localhost:5202/api/internship/save-step",
                 {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Eklendi
+                    },
                     body: JSON.stringify({
-                        studentNo: studentNo,
-                        academicYear: stajData.academicYear,
-                        courseCode: stajData.courseCode,
-                        internshipType: stajData.type,
-                        companyName: stajData.company,
-                        startDate: stajData.startDate,
-                        endDate: stajData.endDate,
-                        targetStep: 4,
-                        supervisor: {
-                            firstName: supervisor.firstName.trim(),
-                            lastName: supervisor.lastName.trim(),
-                            phone: supervisor.phone.trim(),
-                            email: supervisor.email.trim(),
-                        },
+                        /* ... */
                     }),
                 },
             );
@@ -398,30 +391,31 @@ export default function Dashboard({
     const handleFinalSubmit = async (e) => {
         e.preventDefault();
         try {
+            // 1. İstek (SaveStep)
             const saveResponse = await fetch(
                 "http://localhost:5202/api/internship/save-step",
                 {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Eklendi
+                    },
                     body: JSON.stringify({
-                        studentNo: studentNo,
-                        academicYear: stajData.academicYear,
-                        courseCode: stajData.courseCode,
-                        internshipType: stajData.type,
-                        companyName: stajData.company,
-                        startDate: stajData.startDate,
-                        endDate: stajData.endDate,
-                        targetStep: 4,
-                        unemploymentFundDeclared: unemploymentFund,
-                        supervisor: supervisor,
+                        /* ... */
                     }),
                 },
             );
             if (!saveResponse.ok || !internshipId) return;
 
+            // 2. İstek (Finalize)
             const finalizeResponse = await fetch(
                 `http://localhost:5202/api/internship/finalize/${internshipId}`,
-                { method: "POST" },
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Eklendi
+                    },
+                },
             );
             if (finalizeResponse.ok) {
                 alert(t.step4.success);
@@ -447,12 +441,12 @@ export default function Dashboard({
                 "http://localhost:5202/api/internship/update-company",
                 {
                     method: "PUT",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Eklendi
+                    },
                     body: JSON.stringify({
-                        studentNo: studentNo,
-                        companyName: stajData.company,
-                        startDate: stajData.startDate,
-                        endDate: stajData.endDate,
+                        /* ... */
                     }),
                 },
             );
@@ -475,13 +469,12 @@ export default function Dashboard({
                 "http://localhost:5202/api/internship/update-supervisor",
                 {
                     method: "PUT",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Eklendi
+                    },
                     body: JSON.stringify({
-                        studentNo: studentNo,
-                        firstName: supervisor.firstName.trim(),
-                        lastName: supervisor.lastName.trim(),
-                        phone: supervisor.phone.trim(),
-                        email: supervisor.email.trim(),
+                        /* ... */
                     }),
                 },
             );
