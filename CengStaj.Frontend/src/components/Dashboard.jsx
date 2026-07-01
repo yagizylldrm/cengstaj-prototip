@@ -46,8 +46,6 @@ export default function Dashboard({
     useEffect(() => {
         async function loadDashboardData() {
             try {
-                // Eski Hali: const response = await fetch(`http://localhost:5202/api/internship/student/${studentNo}`);
-                // Yeni Hali:
                 const response = await fetch(
                     `http://localhost:5202/api/internship/student/${studentNo}`,
                     {
@@ -343,10 +341,17 @@ export default function Dashboard({
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Eklendi
+                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Token ekleme
                     },
                     body: JSON.stringify({
-                        /* ... */
+                        studentNo: studentNo,
+                        academicYear: stajData.academicYear,
+                        courseCode: stajData.courseCode,
+                        internshipType: stajData.type,
+                        companyName: stajData.company,
+                        startDate: stajData.startDate,
+                        endDate: stajData.endDate,
+                        targetStep: 2,
                     }),
                 },
             );
@@ -372,10 +377,23 @@ export default function Dashboard({
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Eklendi
+                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Token ekleme
                     },
                     body: JSON.stringify({
-                        /* ... */
+                        studentNo: studentNo,
+                        academicYear: stajData.academicYear,
+                        courseCode: stajData.courseCode,
+                        internshipType: stajData.type,
+                        companyName: stajData.company,
+                        startDate: stajData.startDate,
+                        endDate: stajData.endDate,
+                        targetStep: 4,
+                        supervisor: {
+                            firstName: supervisor.firstName.trim(),
+                            lastName: supervisor.lastName.trim(),
+                            phone: supervisor.phone.trim(),
+                            email: supervisor.email.trim(),
+                        },
                     }),
                 },
             );
@@ -398,10 +416,19 @@ export default function Dashboard({
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Eklendi
+                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Token ekleme
                     },
                     body: JSON.stringify({
-                        /* ... */
+                        studentNo: studentNo,
+                        academicYear: stajData.academicYear,
+                        courseCode: stajData.courseCode,
+                        internshipType: stajData.type,
+                        companyName: stajData.company,
+                        startDate: stajData.startDate,
+                        endDate: stajData.endDate,
+                        targetStep: 4,
+                        unemploymentFundDeclared: unemploymentFund,
+                        supervisor: supervisor,
                     }),
                 },
             );
@@ -413,7 +440,7 @@ export default function Dashboard({
                 {
                     method: "POST",
                     headers: {
-                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Eklendi
+                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Token ekleme
                     },
                 },
             );
@@ -443,10 +470,13 @@ export default function Dashboard({
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Eklendi
+                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Token ekleme
                     },
                     body: JSON.stringify({
-                        /* ... */
+                        studentNo: studentNo,
+                        companyName: stajData.company,
+                        startDate: stajData.startDate,
+                        endDate: stajData.endDate,
                     }),
                 },
             );
@@ -471,10 +501,14 @@ export default function Dashboard({
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Eklendi
+                        Authorization: `Bearer ${localStorage.getItem("token")}`, // 🔒 Token ekleme
                     },
                     body: JSON.stringify({
-                        /* ... */
+                        studentNo: studentNo,
+                        firstName: supervisor.firstName.trim(),
+                        lastName: supervisor.lastName.trim(),
+                        phone: supervisor.phone.trim(),
+                        email: supervisor.email.trim(),
                     }),
                 },
             );

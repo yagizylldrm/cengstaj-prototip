@@ -2,6 +2,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using CengStaj.Backend.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer; // 💡 JWT için eklendi
+using Microsoft.AspNetCore.Http; // 💡 StatusCodes için eklendi
 using Microsoft.AspNetCore.RateLimiting; // 💡 Rate Limiting için eklendi
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens; // 💡 JWT için eklendi
@@ -14,6 +15,10 @@ AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 // 🔒 GÜVENLİK FIX'I: Kaba kuvvet saldırılarına karşı Rate Limiting (Dakikada maks 5 istek)
 builder.Services.AddRateLimiter(options =>
 {
+    // 💡 KRİTİK GÜVENLİK FIX'I: .NET varsayılan olarak 503 döner.
+    // Ön yüzdeki rate limit kontrolünün tetiklenebilmesi için bunu resmi olarak 429 yapıyoruz!
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
     options.AddFixedWindowLimiter(
         "AuthPolicy",
         opt =>

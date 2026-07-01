@@ -109,7 +109,7 @@ export default function LoginPortal({
         },
     }[lang];
 
-    // --- MODERNIZE EDILMIS GIRIŞ BAĞLANTISI ---
+    // --- MODERNIZE EDILMIS GIRIŞ BAĞLANTISI (RATE LIMIT KORUMALI) ---
     const handleLoginSubmit = async (e) => {
         e.preventDefault();
         if (studentNo.trim() === "" || password.trim() === "") {
@@ -132,6 +132,16 @@ export default function LoginPortal({
                 },
             );
 
+            // 💡 KONTROL: Eğer sunucu 429 döndürdüyse JSON parse etmeden direkt engelle
+            if (response.status === 429) {
+                alert(
+                    lang === "tr"
+                        ? "Çok fazla başarısız deneme yaptınız! Lütfen 1 dakika bekleyin."
+                        : "Too many attempts! Please wait 1 minute.",
+                );
+                return;
+            }
+
             const result = await response.json();
 
             if (response.ok) {
@@ -147,9 +157,7 @@ export default function LoginPortal({
             }
         } catch (error) {
             console.error("Giriş hatası:", error);
-            alert(
-                "Backend sunucusuna bağlanılamadı! .NET API'nin açık olduğundan emin olun.",
-            );
+            alert("Sunucu bağlantı hatası!");
         }
     };
 
@@ -196,6 +204,15 @@ export default function LoginPortal({
                 },
             );
 
+            if (response.status === 429) {
+                alert(
+                    lang === "tr"
+                        ? "Çok fazla istek! Lütfen biraz bekleyin."
+                        : "Too many requests! Please wait.",
+                );
+                return;
+            }
+
             const result = await response.json();
 
             if (response.ok) {
@@ -233,10 +250,19 @@ export default function LoginPortal({
                     body: JSON.stringify({ studentNo: studentNo.trim() }),
                 },
             );
+
+            if (response.status === 429) {
+                alert(
+                    lang === "tr"
+                        ? "Çok fazla kod talebi! Lütfen 1 dakika bekleyin."
+                        : "Too many requests! Please wait 1 minute.",
+                );
+                return;
+            }
+
             const result = await response.json();
 
             if (response.ok) {
-                // 💡 FIX: result.otp bağımlılığı kaldırıldı.
                 setMode("forgot_otp");
                 alert(
                     lang === "tr"
@@ -252,17 +278,41 @@ export default function LoginPortal({
         }
     };
 
-    const handleOtpVerify = (e) => {
+    const handleOtpVerify = async (e) => {
         e.preventDefault();
 
-        // 💡 FIX: Eğer şifre sıfırlama aşamasındaysak ön kontrolü pas geçip direkt şifre yenileme moduna aktar.
-        // Çünkü asıl doğrulama finalde backend tarafından yapılacak.
+        // 💡 UX & GÜVENLİK FIX'I: Şifre sıfırlama kodunu peşinen backend'e soruyoruz
         if (mode === "forgot_otp") {
-            setMode("reset");
+            try {
+                const response = await fetch(
+                    "http://localhost:5202/api/auth/verify-reset-code",
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            studentNo: studentNo.trim(),
+                            otpCode: otpInput.trim(),
+                        }),
+                    },
+                );
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Kod doğruysa şifre sıfırlama ekranına geçiş izni ver
+                    setMode("reset");
+                } else {
+                    // Kod yanlışsa anında burada durdur ve uyar!
+                    alert(result.message || "Doğrulama kodu hatalı!");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Sunucu bağlantı hatası!");
+            }
             return;
         }
 
-        // Normal ilk kayıt aktivasyon kodu kontrolü (Yerel Math.random lojiği)
+        // Normal ilk kayıt aktivasyon kodu kontrolü (Eski yerel Math.random lojiği)
         if (otpInput === generatedOtp) {
             alert(t.otpSuccess);
             setMode("login");
@@ -300,6 +350,16 @@ export default function LoginPortal({
                     }),
                 },
             );
+
+            if (response.status === 429) {
+                alert(
+                    lang === "tr"
+                        ? "Çok fazla deneme! Kilidinizin açılmasını bekleyin."
+                        : "Too many requests! Wait for unlock.",
+                );
+                return;
+            }
+
             const result = await response.json();
 
             if (response.ok) {

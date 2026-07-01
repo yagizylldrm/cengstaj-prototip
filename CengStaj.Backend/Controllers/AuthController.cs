@@ -142,6 +142,28 @@ namespace CengStaj.Backend.Controllers
             );
         }
 
+        // --- 💡 YENİ: ŞİFRE SIFIRLAMA KODUNU ÖNDEN DOĞRULAMA (UX FIX) ---
+        [HttpPost("verify-reset-code")]
+        public object VerifyResetCode([FromBody] VerifyResetCodeDto dto)
+        {
+            if (
+                !_resetCodes.TryGetValue(dto.StudentNo, out var storedOtp)
+                || storedOtp != dto.OtpCode
+            )
+            {
+                return BadRequest(
+                    new { message = "Girdiğiniz şifre sıfırlama kodu hatalı veya süresi dolmuş!" }
+                );
+            }
+
+            return Ok(
+                new { message = "Kod başarıyla doğrulandı, yeni şifrenizi belirleyebilirsiniz." }
+            );
+        }
+
+        // ... sayfanın altındaki DTO kayıtlarının arasına şunu da ekle:
+        public record VerifyResetCodeDto(string StudentNo, string OtpCode);
+
         // --- YENİ ŞİFREYİ VERİTABANINA MÜHÜRLEME ---
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
