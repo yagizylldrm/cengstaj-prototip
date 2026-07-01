@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Dashboard({
     lang,
@@ -9,15 +9,12 @@ export default function Dashboard({
 }) {
     const [currentStep, setCurrentStep] = useState(1);
     const [maxUnlockedStep, setMaxUnlockedStep] = useState(1);
-
-    // Başvuru finalizasyon durumu
     const [isFinalized, setIsFinalized] = useState(false);
+    const [internshipId, setInternshipId] = useState(null);
 
-    // Düzenleme modlarının takibi
     const [isEditingStaj, setIsEditingStaj] = useState(false);
     const [isEditingSupervisor, setIsEditingSupervisor] = useState(false);
 
-    // Adım 1: Resmi Staj Bilgileri State'i
     const [stajData, setStajData] = useState({
         academicYear: "2026/2027",
         courseCode: "CENG 200",
@@ -34,7 +31,6 @@ export default function Dashboard({
         company: "",
     });
 
-    // Adım 3: Yetkili Kişi Bilgileri State'i
     const [supervisor, setSupervisor] = useState({
         firstName: "",
         lastName: "",
@@ -42,15 +38,141 @@ export default function Dashboard({
         email: "",
     });
 
-    // Adım 4: Devlet Katkısı Checkbox State'i
     const [unemploymentFund, setUnemploymentFund] = useState(false);
 
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    // --- LİFECYCLE: VERİTABANINDAN PROFIL & STAJ BİLGİLERİNİ ÇEKME ---
+    useEffect(() => {
+        async function loadDashboardData() {
+            try {
+                const response = await fetch(
+                    `http://localhost:5202/api/internship/student/${studentNo}`,
+                );
+                if (response.ok) {
+                    const result = await response.json();
+
+                    const profile =
+                        result?.studentProfile || result?.StudentProfile;
+                    const app = result?.data || result?.Data;
+
+                    if (profile) {
+                        const fName =
+                            profile.firstName || profile.FirstName || "";
+                        const lName =
+                            profile.lastName || profile.LastName || "";
+                        const tc = profile.tcNo || profile.TcNo || "";
+                        const ph = profile.phone || profile.Phone || "";
+
+                        if (result.hasApplication && app) {
+                            setInternshipId(app.id || app.Id || null);
+
+                            setStajData({
+                                academicYear:
+                                    app.academicYear ||
+                                    app.AcademicYear ||
+                                    "2026/2027",
+                                courseCode:
+                                    app.courseCode ||
+                                    app.CourseCode ||
+                                    "CENG 200",
+                                tcNo: tc,
+                                firstName: fName,
+                                lastName: lName,
+                                phone: ph,
+                                faculty: "Mühendislik Fakültesi",
+                                department: "Bilgisayar Mühendisliği",
+                                minor: "Yok",
+                                type:
+                                    app.internshipType ||
+                                    app.InternshipType ||
+                                    "Zorunlu",
+                                startDate: app.startDate
+                                    ? app.startDate.split("T")[0]
+                                    : app.StartDate
+                                      ? app.StartDate.split("T")[0]
+                                      : "",
+                                endDate: app.endDate
+                                    ? app.endDate.split("T")[0]
+                                    : app.EndDate
+                                      ? app.EndDate.split("T")[0]
+                                      : "",
+                                company:
+                                    app.companyName || app.CompanyName || "",
+                            });
+
+                            const sup = app.supervisor || app.Supervisor;
+                            if (sup) {
+                                setSupervisor({
+                                    firstName:
+                                        sup.firstName || sup.FirstName || "",
+                                    lastName:
+                                        sup.lastName || sup.LastName || "",
+                                    phone: sup.phone || sup.Phone || "",
+                                    email: sup.email || sup.Email || "",
+                                });
+                            }
+
+                            setUnemploymentFund(
+                                app.unemploymentFundDeclared ||
+                                    app.UnemploymentFundDeclared ||
+                                    false,
+                            );
+                            setIsFinalized(
+                                app.isFinalized || app.IsFinalized || false,
+                            );
+                            setCurrentStep(
+                                app.isFinalized || app.IsFinalized
+                                    ? 1
+                                    : app.currentStep || app.CurrentStep || 1,
+                            );
+                            setMaxUnlockedStep(
+                                app.currentStep || app.CurrentStep || 1,
+                            );
+                        } else {
+                            setStajData((prev) => ({
+                                ...prev,
+                                firstName: fName,
+                                lastName: lName,
+                                tcNo: tc,
+                                phone: ph,
+                            }));
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Dashboard veri yükleme hatası:", error);
+            }
+        }
+
+        if (studentNo) {
+            loadDashboardData();
+        }
+    }, [studentNo]);
+
+    // --- SÖZLÜK TANIMLARI ---
     const t = {
         tr: {
             panelTitle: "STAJ BİLGİ SİSTEMİ",
             subTitle: "Öğrenci Kontrol Otomasyonu",
             welcome: "Hoş Geldiniz,",
             logoutBtn: "Güvenli Çıkış",
+            genericLabels: {
+                firstName: "Öğrenci Adı",
+                lastName: "Öğrenci Soyadı",
+                academicYear: "Eğitim-Öğretim Yılı",
+                courseCode: "Staj Dersi",
+                tcNo: "T.C. Kimlik Numarası",
+                phone: "Cep Telefonu No",
+                type: "Staj Durumu (Türü)",
+                company: "Firma / Kurum Adı",
+                startDate: "Staj Başlangıç",
+                endDate: "Staj Bitiş",
+                faculty: "Fakülte",
+                department: "Bölüm",
+                studentNo: "Öğrenci Numarası",
+                profileSuffix: " (Profil Verisi)",
+            },
             steps: [
                 "1. Staj Bilgilerini Gir",
                 "2. Üretilen Formu İndir",
@@ -63,9 +185,15 @@ export default function Dashboard({
             },
             step2: {
                 title: "Adım 2: Otomatik Hazırlanan Sigorta Giriş Formu",
-                desc: "İlk adımda girdiğiniz verilre göre resmi dilekçeniz otomatik doldurulmuştur. Yazdırıp imzalayarak teslim ediniz.",
+                desc: "İlk adımda girdiğiniz verilere göre resmi dilekçeniz otomatik doldurulmuştur. Yazdırıp imzalayarak teslim ediniz.",
                 printBtn: "Belgeyi Yazdır / PDF Kaydet",
                 nextBtn: "Yetkili Kişi Adımına Geç →",
+                formHeader:
+                    "ÇANKAYA ÜNİVERSİTESİ ZORUNLU STAJYER ÖĞRENCİ SİGORTA GİRİŞ FORMU",
+                declarationText:
+                    "Yukarıda belirttiğim Staj Başlama ve Bitiş Tarihleri arasında zorunlu staj programım kapsamında stajyer olarak görev yapacağım. Sosyal Güvenlik Kurumu'na Stajyer olarak İşe Giriş Bildirimimin yapılmasını, durumumda meydana gelebilecek değişiklikleri staj başlangıç tarihimden yedi gün öncesine kadar Kayıtlı Olduğum Bölüme bildirmeyi taahhüt ederim.",
+                signStudent: "Öğrenci İmza",
+                signDept: "Bölüm Staj Onay",
             },
             step3: {
                 title: "Adım 3: Kurumsal Yetkili Kişi / Staj Amiri Bilgileri",
@@ -106,8 +234,24 @@ export default function Dashboard({
             subTitle: "Student Automation Dashboard",
             welcome: "Welcome,",
             logoutBtn: "Secure Logout",
+            genericLabels: {
+                firstName: "Student First Name",
+                lastName: "Student Last Name",
+                academicYear: "Academic Year",
+                courseCode: "Internship Course",
+                tcNo: "T.C. ID Number",
+                phone: "Mobile Phone Number",
+                type: "Internship Status (Type)",
+                company: "Company / Institution Name",
+                startDate: "Internship Start",
+                endDate: "Internship End",
+                faculty: "Faculty",
+                department: "Department",
+                studentNo: "Student ID",
+                profileSuffix: " (Profile Data)",
+            },
             steps: [
-                "1. Enter Staj Info",
+                "1. Enter Internship Info",
                 "2. Download Form",
                 "3. Supervisor Info",
                 "4. Fund Declaration",
@@ -121,13 +265,19 @@ export default function Dashboard({
                 desc: "Your official petition has been automatically compiled based on your inputs. Print, sign, and submit.",
                 printBtn: "Print Document / Save PDF",
                 nextBtn: "Proceed to Supervisor Step →",
+                formHeader:
+                    "CANKAYA UNIVERSITY COMPULSORY INTERN INSURANCE REGISTRATION FORM",
+                declarationText:
+                    "I hereby declare that I will work as an intern within the scope of my compulsory internship program between the Internship Start and End Dates specified above. I undertake to have my Employment Entry Notification sent to the Social Security Institution as an Intern, and to notify the Department I am registered in of any changes that may occur in my status up to seven days before my internship start date.",
+                signStudent: "Student Signature",
+                signDept: "Department Approval",
             },
             step3: {
                 title: "Step 3: Corporate Supervisor / Engineer Details",
                 fields: [
-                    "First Name",
-                    "Last Name",
-                    "Engineer Phone No",
+                    "Supervisor First Name",
+                    "Supervisor Last Name",
+                    "Supervisor Phone No",
                     "Corporate Business Email",
                 ],
                 btn: "Save Supervisor & Proceed to Final Step",
@@ -144,7 +294,7 @@ export default function Dashboard({
                 editBtn: "Edit",
                 saveBtn: "Save Changes",
                 cancelBtn: "Cancel",
-                secStaj: "Internship & Academic Details",
+                secStaj: "Document Repository",
                 secAmir: "Supervisor Information",
                 secEvrak: "Document Repository",
                 evrakDesc:
@@ -161,35 +311,204 @@ export default function Dashboard({
         if (stepNumber <= maxUnlockedStep) setCurrentStep(stepNumber);
     };
 
-    const nextFromStep1 = (e) => {
+    const nextFromStep1 = async (e) => {
         e.preventDefault();
-        setMaxUnlockedStep(2);
-        setCurrentStep(2);
+        if (stajData.startDate < todayStr) {
+            alert(
+                lang === "tr"
+                    ? "Staj başlangıç tarihi geçmiş bir tarih olamaz!"
+                    : "Start date cannot be in the past!",
+            );
+            return;
+        }
+        if (stajData.endDate <= stajData.startDate) {
+            alert(
+                lang === "tr"
+                    ? "Bitiş tarihi başlangıç tarihinden büyük olmalıdır!"
+                    : "End date must be after the start date!",
+            );
+            return;
+        }
+        try {
+            const response = await fetch(
+                "http://localhost:5202/api/internship/save-step",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        studentNo: studentNo,
+                        academicYear: stajData.academicYear,
+                        courseCode: stajData.courseCode,
+                        internshipType: stajData.type,
+                        companyName: stajData.company,
+                        startDate: stajData.startDate,
+                        endDate: stajData.endDate,
+                        targetStep: 2,
+                    }),
+                },
+            );
+            const result = await response.json();
+            if (response.ok) {
+                setInternshipId(result.internshipId);
+                setMaxUnlockedStep(2);
+                setCurrentStep(2);
+            } else {
+                alert(result.message || "Error!");
+            }
+        } catch (error) {
+            console.error(error);
+        }
     };
 
-    const nextFromStep3 = (e) => {
+    const nextFromStep3 = async (e) => {
         e.preventDefault();
-        setMaxUnlockedStep(4);
-        setCurrentStep(4);
+        try {
+            const response = await fetch(
+                "http://localhost:5202/api/internship/save-step",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        studentNo: studentNo,
+                        academicYear: stajData.academicYear,
+                        courseCode: stajData.courseCode,
+                        internshipType: stajData.type,
+                        companyName: stajData.company,
+                        startDate: stajData.startDate,
+                        endDate: stajData.endDate,
+                        targetStep: 4,
+                        supervisor: {
+                            firstName: supervisor.firstName.trim(),
+                            lastName: supervisor.lastName.trim(),
+                            phone: supervisor.phone.trim(),
+                            email: supervisor.email.trim(),
+                        },
+                    }),
+                },
+            );
+            if (response.ok) {
+                setMaxUnlockedStep(4);
+                setCurrentStep(4);
+            }
+        } catch (error) {
+            console.error(error);
+        }
     };
 
-    const handleFinalSubmit = (e) => {
+    const handleFinalSubmit = async (e) => {
         e.preventDefault();
-        alert(t.step4.success);
-        setIsFinalized(true);
+        try {
+            const saveResponse = await fetch(
+                "http://localhost:5202/api/internship/save-step",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        studentNo: studentNo,
+                        academicYear: stajData.academicYear,
+                        courseCode: stajData.courseCode,
+                        internshipType: stajData.type,
+                        companyName: stajData.company,
+                        startDate: stajData.startDate,
+                        endDate: stajData.endDate,
+                        targetStep: 4,
+                        unemploymentFundDeclared: unemploymentFund,
+                        supervisor: supervisor,
+                    }),
+                },
+            );
+            if (!saveResponse.ok || !internshipId) return;
+
+            const finalizeResponse = await fetch(
+                `http://localhost:5202/api/internship/finalize/${internshipId}`,
+                { method: "POST" },
+            );
+            if (finalizeResponse.ok) {
+                alert(t.step4.success);
+                setIsFinalized(true);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleUpdateCompany = async (e) => {
+        e.preventDefault();
+        if (stajData.endDate <= stajData.startDate) {
+            alert(
+                lang === "tr"
+                    ? "Bitiş tarihi başlangıç tarihinden büyük olmalıdır!"
+                    : "End date must be after the start date!",
+            );
+            return;
+        }
+        try {
+            const response = await fetch(
+                "http://localhost:5202/api/internship/update-company",
+                {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        studentNo: studentNo,
+                        companyName: stajData.company,
+                        startDate: stajData.startDate,
+                        endDate: stajData.endDate,
+                    }),
+                },
+            );
+            const result = await response.json();
+            if (response.ok) {
+                alert(result.message);
+                setIsEditingStaj(false);
+            } else {
+                alert(result.message || "Error");
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleUpdateSupervisor = async (e) => {
+        e.preventDefault();
+        try {
+            const response = await fetch(
+                "http://localhost:5202/api/internship/update-supervisor",
+                {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        studentNo: studentNo,
+                        firstName: supervisor.firstName.trim(),
+                        lastName: supervisor.lastName.trim(),
+                        phone: supervisor.phone.trim(),
+                        email: supervisor.email.trim(),
+                    }),
+                },
+            );
+            const result = await response.json();
+            if (response.ok) {
+                alert(result.message);
+                setIsEditingSupervisor(false);
+            } else {
+                alert(result.message || "Error");
+            }
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     return (
         <div className="w-full min-h-screen bg-slate-100 font-sans antialiased flex flex-col">
-            {/* Üst Profil & Kontrol Barı */}
             <header className="w-full bg-[#2f4973] text-white px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-md">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 flex items-center justify-center font-bold">
-                        <img
-                            src={logo}
-                            alt="CENG Logo"
-                            className="w-16 h-16 object-contain drop-shadow-xs"
-                        />
+                        {logo && (
+                            <img
+                                src={logo}
+                                alt="CENG Logo"
+                                className="w-16 h-16 object-contain drop-shadow-xs"
+                            />
+                        )}
                     </div>
                     <div>
                         <h1 className="text-lg font-bold tracking-wider">
@@ -207,10 +526,10 @@ export default function Dashboard({
                             {t.welcome}
                         </p>
                         <p className="text-sm font-black text-white">
-                            {stajData.firstName || "ÖĞRENCİ"}{" "}
-                            {stajData.lastName || "ADI"}{" "}
+                            {stajData.firstName || "..."}{" "}
+                            {stajData.lastName || ""}{" "}
                             <span className="text-xs font-mono font-normal text-slate-300">
-                                ({studentNo || "20XXXXXXX"})
+                                ({studentNo})
                             </span>
                         </p>
                     </div>
@@ -219,34 +538,31 @@ export default function Dashboard({
                         <button
                             type="button"
                             onClick={() => setLang("tr")}
-                            className={`px-2.5 py-1 font-bold rounded-md transition-colors cursor-pointer ${lang === "tr" ? "bg-white text-[#2f4973]" : "text-slate-200 hover:bg-white/10"}`}
+                            className={`px-2.5 py-1 font-bold rounded-md cursor-pointer ${lang === "tr" ? "bg-white text-[#2f4973]" : "text-slate-200 hover:bg-white/10"}`}
                         >
                             TR
                         </button>
                         <button
                             type="button"
                             onClick={() => setLang("en")}
-                            className={`px-2.5 py-1 font-bold rounded-md transition-colors cursor-pointer ${lang === "en" ? "bg-white text-[#2f4973]" : "text-slate-200 hover:bg-white/10"}`}
+                            className={`px-2.5 py-1 font-bold rounded-md cursor-pointer ${lang === "en" ? "bg-white text-[#2f4973]" : "text-slate-200 hover:bg-white/10"}`}
                         >
                             EN
                         </button>
                     </div>
-
                     <button
                         type="button"
                         onClick={onLogout}
                         className="text-xs bg-red-600/80 hover:bg-red-600 border border-red-500/30 text-white px-3 py-2 rounded-lg font-bold shadow-xs transition-colors cursor-pointer"
                     >
-                        ❌ {t.logoutBtn}
+                        {t.logoutBtn}
                     </button>
                 </div>
             </header>
 
-            {/* GÖRÜNÜM A: DETAYLI DASHBOARD YÖNETİM MERKEZİ (image_d7563d.png üst kısmı silindi) */}
             {isFinalized ? (
                 <main className="flex-1 w-full max-w-5xl mx-auto p-4 md:p-8 space-y-6 animate-fadeIn">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Sol İki Kolon: Veri Kartları */}
                         <div className="lg:col-span-2 space-y-6">
                             {/* KART 1: STAJ VE AKADEMİK BİLGİLER */}
                             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
@@ -268,101 +584,16 @@ export default function Dashboard({
 
                                 {isEditingStaj ? (
                                     <form
-                                        onSubmit={(e) => {
-                                            e.preventDefault();
-                                            setIsEditingStaj(false);
-                                        }}
-                                        className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold text-slate-700"
+                                        onSubmit={handleUpdateCompany}
+                                        className="space-y-4 text-xs font-semibold text-slate-700"
                                     >
                                         <div>
                                             <label className="block mb-1 text-slate-500">
-                                                Öğrenci Adı
+                                                {t.genericLabels.company}
                                             </label>
                                             <input
                                                 type="text"
-                                                value={stajData.firstName}
-                                                onChange={(e) =>
-                                                    setStajData({
-                                                        ...stajData,
-                                                        firstName:
-                                                            e.target.value.toUpperCase(),
-                                                    })
-                                                }
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block mb-1 text-slate-500">
-                                                Öğrenci Soyadı
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={stajData.lastName}
-                                                onChange={(e) =>
-                                                    setStajData({
-                                                        ...stajData,
-                                                        lastName:
-                                                            e.target.value.toUpperCase(),
-                                                    })
-                                                }
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block mb-1 text-slate-500">
-                                                Eğitim Yılı
-                                            </label>
-                                            <select
-                                                value={stajData.academicYear}
-                                                onChange={(e) =>
-                                                    setStajData({
-                                                        ...stajData,
-                                                        academicYear:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
-                                            >
-                                                <option value="2025/2026">
-                                                    2025/2026
-                                                </option>
-                                                <option value="2026/2027">
-                                                    2026/2027
-                                                </option>
-                                                <option value="2027/2028">
-                                                    2027/2028
-                                                </option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block mb-1 text-slate-500">
-                                                Staj Dersi
-                                            </label>
-                                            <select
-                                                value={stajData.courseCode}
-                                                onChange={(e) =>
-                                                    setStajData({
-                                                        ...stajData,
-                                                        courseCode:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
-                                            >
-                                                <option value="CENG 200">
-                                                    CENG 200
-                                                </option>
-                                                <option value="CENG 300">
-                                                    CENG 300
-                                                </option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block mb-1 text-slate-500">
-                                                Firma Adı
-                                            </label>
-                                            <input
-                                                type="text"
+                                                required
                                                 value={stajData.company}
                                                 onChange={(e) =>
                                                     setStajData({
@@ -370,22 +601,60 @@ export default function Dashboard({
                                                         company: e.target.value,
                                                     })
                                                 }
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#2f4973]"
                                             />
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block mb-1 text-slate-500">
+                                                    {t.genericLabels.startDate}
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    required
+                                                    value={stajData.startDate}
+                                                    onChange={(e) =>
+                                                        setStajData({
+                                                            ...stajData,
+                                                            startDate:
+                                                                e.target.value,
+                                                        })
+                                                    }
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono focus:outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block mb-1 text-slate-500">
+                                                    {t.genericLabels.endDate}
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    required
+                                                    value={stajData.endDate}
+                                                    onChange={(e) =>
+                                                        setStajData({
+                                                            ...stajData,
+                                                            endDate:
+                                                                e.target.value,
+                                                        })
+                                                    }
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono focus:outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2 pt-2">
                                             <button
                                                 type="submit"
-                                                className="bg-emerald-600 text-white px-3 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-colors cursor-pointer"
+                                                className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-colors cursor-pointer"
                                             >
                                                 {t.mgmt.saveBtn}
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() =>
-                                                    setIsEditingStaj(false)
-                                                }
-                                                className="bg-slate-100 text-slate-600 px-3 py-2 rounded-lg font-bold hover:bg-slate-200 transition-colors cursor-pointer"
+                                                onClick={() => {
+                                                    setIsEditingStaj(false);
+                                                }}
+                                                className="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg font-bold hover:bg-slate-200 transition-colors cursor-pointer"
                                             >
                                                 {t.mgmt.cancelBtn}
                                             </button>
@@ -395,33 +664,33 @@ export default function Dashboard({
                                     <div className="grid grid-cols-2 gap-y-3 text-xs font-medium text-slate-600">
                                         <p>
                                             <strong className="text-slate-900">
-                                                Öğrenci:
+                                                {t.genericLabels.firstName}:
                                             </strong>{" "}
                                             {stajData.firstName}{" "}
                                             {stajData.lastName}
                                         </p>
                                         <p>
                                             <strong className="text-slate-900">
-                                                T.C. No:
+                                                {t.genericLabels.tcNo}:
                                             </strong>{" "}
                                             {stajData.tcNo}
                                         </p>
                                         <p>
                                             <strong className="text-slate-900">
-                                                Dönem / Ders:
+                                                {t.genericLabels.courseCode}:
                                             </strong>{" "}
                                             {stajData.academicYear} •{" "}
                                             {stajData.courseCode}
                                         </p>
                                         <p>
                                             <strong className="text-slate-900">
-                                                Staj Türü:
+                                                {t.genericLabels.type}:
                                             </strong>{" "}
                                             {stajData.type}
                                         </p>
                                         <p className="col-span-2">
                                             <strong className="text-slate-900">
-                                                Kurum / Firma:
+                                                {t.genericLabels.company}:
                                             </strong>{" "}
                                             <span className="uppercase font-semibold text-slate-800">
                                                 {stajData.company}
@@ -429,7 +698,8 @@ export default function Dashboard({
                                         </p>
                                         <p className="col-span-2">
                                             <strong className="text-slate-900">
-                                                Tarih Aralığı:
+                                                {t.genericLabels.startDate} /{" "}
+                                                {t.genericLabels.endDate}:
                                             </strong>{" "}
                                             {stajData.startDate
                                                 ? stajData.startDate
@@ -469,91 +739,93 @@ export default function Dashboard({
 
                                 {isEditingSupervisor ? (
                                     <form
-                                        onSubmit={(e) => {
-                                            e.preventDefault();
-                                            setIsEditingSupervisor(false);
-                                        }}
-                                        className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold text-slate-700"
+                                        onSubmit={handleUpdateSupervisor}
+                                        className="space-y-3 text-xs font-semibold text-slate-700"
                                     >
-                                        <div>
-                                            <label className="block mb-1 text-slate-500">
-                                                {t.step3.fields[0]}
-                                            </label>
-                                            <input
-                                                type="text"
-                                                required
-                                                value={supervisor.firstName}
-                                                onChange={(e) =>
-                                                    setSupervisor({
-                                                        ...supervisor,
-                                                        firstName:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
-                                            />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block mb-1 text-slate-500">
+                                                    {t.step3.fields[0]}
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    value={supervisor.firstName}
+                                                    onChange={(e) =>
+                                                        setSupervisor({
+                                                            ...supervisor,
+                                                            firstName:
+                                                                e.target.value,
+                                                        })
+                                                    }
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#2f4973]"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block mb-1 text-slate-500">
+                                                    {t.step3.fields[1]}
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    value={supervisor.lastName}
+                                                    onChange={(e) =>
+                                                        setSupervisor({
+                                                            ...supervisor,
+                                                            lastName:
+                                                                e.target.value,
+                                                        })
+                                                    }
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#2f4973]"
+                                                />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="block mb-1 text-slate-500">
-                                                {t.step3.fields[1]}
-                                            </label>
-                                            <input
-                                                type="text"
-                                                required
-                                                value={supervisor.lastName}
-                                                onChange={(e) =>
-                                                    setSupervisor({
-                                                        ...supervisor,
-                                                        lastName:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
-                                            />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block mb-1 text-slate-500">
+                                                    {t.step3.fields[2]}
+                                                </label>
+                                                <input
+                                                    type="tel"
+                                                    maxLength="11"
+                                                    pattern="0[0-9]{10}"
+                                                    required
+                                                    value={supervisor.phone}
+                                                    onChange={(e) =>
+                                                        setSupervisor({
+                                                            ...supervisor,
+                                                            phone: e.target.value.replace(
+                                                                /[^0-9]/g,
+                                                                "",
+                                                            ),
+                                                        })
+                                                    }
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono focus:outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block mb-1 text-slate-500">
+                                                    {t.step3.fields[3]}
+                                                </label>
+                                                <input
+                                                    type="email"
+                                                    required
+                                                    value={supervisor.email}
+                                                    onChange={(e) =>
+                                                        setSupervisor({
+                                                            ...supervisor,
+                                                            email: e.target
+                                                                .value,
+                                                        })
+                                                    }
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono focus:outline-none"
+                                                />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="block mb-1 text-slate-600">
-                                                {t.step3.fields[2]}
-                                            </label>
-                                            <input
-                                                type="tel"
-                                                maxLength="11"
-                                                pattern="0[0-9]{10}"
-                                                required
-                                                value={supervisor.phone}
-                                                onChange={(e) =>
-                                                    setSupervisor({
-                                                        ...supervisor,
-                                                        phone: e.target.value.replace(
-                                                            /[^0-9]/g,
-                                                            "",
-                                                        ),
-                                                    })
-                                                }
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block mb-1 text-slate-500">
-                                                {t.step3.fields[3]}
-                                            </label>
-                                            <input
-                                                type="email"
-                                                required
-                                                value={supervisor.email}
-                                                onChange={(e) =>
-                                                    setSupervisor({
-                                                        ...supervisor,
-                                                        email: e.target.value,
-                                                    })
-                                                }
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono"
-                                            />
-                                        </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 pt-2">
                                             <button
                                                 type="submit"
-                                                className="bg-emerald-600 text-white px-3 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-colors cursor-pointer"
+                                                className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-colors cursor-pointer"
                                             >
                                                 {t.mgmt.saveBtn}
                                             </button>
@@ -564,7 +836,7 @@ export default function Dashboard({
                                                         false,
                                                     )
                                                 }
-                                                className="bg-slate-100 text-slate-600 px-3 py-2 rounded-lg font-bold hover:bg-slate-200 transition-colors cursor-pointer"
+                                                className="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg font-bold hover:bg-slate-200 transition-colors cursor-pointer"
                                             >
                                                 {t.mgmt.cancelBtn}
                                             </button>
@@ -603,9 +875,7 @@ export default function Dashboard({
                             </div>
                         </div>
 
-                        {/* Sağ Tek Kolon: Dokümanlar ve Katkı Durumu */}
                         <div className="space-y-6">
-                            {/* KART 3: EVRAK HAVUZU */}
                             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
                                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">
                                     {t.mgmt.secEvrak}
@@ -613,7 +883,6 @@ export default function Dashboard({
                                 <p className="text-[11px] text-slate-500 leading-normal">
                                     {t.mgmt.evrakDesc}
                                 </p>
-
                                 <button
                                     onClick={() => {
                                         setIsFinalized(false);
@@ -625,7 +894,6 @@ export default function Dashboard({
                                 </button>
                             </div>
 
-                            {/* KART 4: YASAL BEYAN DURUMU */}
                             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-3">
                                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">
                                     {t.steps[3]}
@@ -633,7 +901,6 @@ export default function Dashboard({
                                 <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
                                     {t.mgmt.fundStatus}
                                 </span>
-
                                 <label className="flex items-start gap-2.5 bg-slate-50 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100/60 transition-colors">
                                     <input
                                         type="checkbox"
@@ -656,9 +923,7 @@ export default function Dashboard({
                     </div>
                 </main>
             ) : (
-                // GÖRÜNÜM B: AKTİF BAŞVURU ADIMLARI (WIZARD)
                 <main className="flex-1 w-full max-w-4xl mx-auto p-4 md:p-8 space-y-6">
-                    {/* Adımölçer Butonları */}
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 grid grid-cols-2 md:grid-cols-4 gap-2">
                         {t.steps.map((stepText, idx) => {
                             const stepNum = idx + 1;
@@ -681,9 +946,7 @@ export default function Dashboard({
                         })}
                     </div>
 
-                    {/* Dinamik Form Kutusu */}
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-md p-6 md:p-8">
-                        {/* ADIM 1: VERİ GİRİŞİ */}
                         {currentStep === 1 && (
                             <div className="space-y-4">
                                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">
@@ -694,46 +957,32 @@ export default function Dashboard({
                                     className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold text-slate-700"
                                 >
                                     <div>
-                                        <label className="block mb-1 text-slate-600">
-                                            Öğrenci Adı
+                                        <label className="block mb-1 text-slate-500">
+                                            {t.genericLabels.firstName}
+                                            {t.genericLabels.profileSuffix}
                                         </label>
                                         <input
                                             type="text"
-                                            required
+                                            readOnly
                                             value={stajData.firstName}
-                                            onChange={(e) =>
-                                                setStajData({
-                                                    ...stajData,
-                                                    firstName:
-                                                        e.target.value.toUpperCase(),
-                                                })
-                                            }
-                                            placeholder="Örn: AHMET"
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#2f4973] focus:bg-white transition-colors"
+                                            className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-500 cursor-not-allowed select-none focus:outline-none"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block mb-1 text-slate-600">
-                                            Öğrenci Soyadı
+                                        <label className="block mb-1 text-slate-500">
+                                            {t.genericLabels.lastName}
+                                            {t.genericLabels.profileSuffix}
                                         </label>
                                         <input
                                             type="text"
-                                            required
+                                            readOnly
                                             value={stajData.lastName}
-                                            onChange={(e) =>
-                                                setStajData({
-                                                    ...stajData,
-                                                    lastName:
-                                                        e.target.value.toUpperCase(),
-                                                })
-                                            }
-                                            placeholder="Örn: YILMAZ"
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#2f4973] focus:bg-white transition-colors"
+                                            className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-500 cursor-not-allowed select-none focus:outline-none"
                                         />
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-slate-600">
-                                            Eğitim-Öğretim Yılı
+                                            {t.genericLabels.academicYear}
                                         </label>
                                         <select
                                             value={stajData.academicYear}
@@ -759,7 +1008,7 @@ export default function Dashboard({
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-slate-600">
-                                            Staj Dersi
+                                            {t.genericLabels.courseCode}
                                         </label>
                                         <select
                                             value={stajData.courseCode}
@@ -780,52 +1029,32 @@ export default function Dashboard({
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block mb-1 text-slate-600">
-                                            T.C. Kimlik Numarası
+                                        <label className="block mb-1 text-slate-500">
+                                            {t.genericLabels.tcNo}
+                                            {t.genericLabels.profileSuffix}
                                         </label>
                                         <input
                                             type="text"
-                                            required
-                                            maxLength="11"
+                                            readOnly
                                             value={stajData.tcNo}
-                                            onChange={(e) =>
-                                                setStajData({
-                                                    ...stajData,
-                                                    tcNo: e.target.value.replace(
-                                                        /[^0-9]/g,
-                                                        "",
-                                                    ),
-                                                })
-                                            }
-                                            placeholder="XXXXXXXXXXX"
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-mono focus:outline-none focus:border-[#2f4973]"
+                                            className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 font-mono text-slate-500 cursor-not-allowed select-none focus:outline-none"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block mb-1 text-slate-600">
-                                            Cep Telefonu No
+                                        <label className="block mb-1 text-slate-500">
+                                            {t.genericLabels.phone}
+                                            {t.genericLabels.profileSuffix}
                                         </label>
                                         <input
                                             type="text"
-                                            required
-                                            maxLength="11"
+                                            readOnly
                                             value={stajData.phone}
-                                            onChange={(e) =>
-                                                setStajData({
-                                                    ...stajData,
-                                                    phone: e.target.value.replace(
-                                                        /[^0-9]/g,
-                                                        "",
-                                                    ),
-                                                })
-                                            }
-                                            placeholder="05XXXXXXXXX"
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-mono focus:outline-none focus:border-[#2f4973]"
+                                            className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 font-mono text-slate-500 cursor-not-allowed select-none focus:outline-none"
                                         />
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-slate-600">
-                                            Staj Durumu (Türü)
+                                            {t.genericLabels.type}
                                         </label>
                                         <select
                                             value={stajData.type}
@@ -851,7 +1080,7 @@ export default function Dashboard({
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-slate-600">
-                                            Firma / Kurum Adı
+                                            {t.genericLabels.company}
                                         </label>
                                         <input
                                             type="text"
@@ -870,17 +1099,19 @@ export default function Dashboard({
                                     <div className="grid grid-cols-2 gap-2">
                                         <div>
                                             <label className="block mb-1 text-slate-600">
-                                                Staj Başlangıç
+                                                {t.genericLabels.startDate}
                                             </label>
                                             <input
                                                 type="date"
                                                 required
+                                                min={todayStr}
                                                 value={stajData.startDate}
                                                 onChange={(e) =>
                                                     setStajData({
                                                         ...stajData,
                                                         startDate:
                                                             e.target.value,
+                                                        endDate: "",
                                                     })
                                                 }
                                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 font-mono"
@@ -888,11 +1119,24 @@ export default function Dashboard({
                                         </div>
                                         <div>
                                             <label className="block mb-1 text-slate-600">
-                                                Staj Bitiş
+                                                {t.genericLabels.endDate}
                                             </label>
                                             <input
                                                 type="date"
                                                 required
+                                                disabled={!stajData.startDate}
+                                                min={
+                                                    stajData.startDate
+                                                        ? new Date(
+                                                              new Date(
+                                                                  stajData.startDate,
+                                                              ).getTime() +
+                                                                  86400000,
+                                                          )
+                                                              .toISOString()
+                                                              .split("T")[0]
+                                                        : todayStr
+                                                }
                                                 value={stajData.endDate}
                                                 onChange={(e) =>
                                                     setStajData({
@@ -900,7 +1144,7 @@ export default function Dashboard({
                                                         endDate: e.target.value,
                                                     })
                                                 }
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 font-mono"
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 font-mono disabled:opacity-50 disabled:cursor-not-allowed"
                                             />
                                         </div>
                                     </div>
@@ -916,7 +1160,6 @@ export default function Dashboard({
                             </div>
                         )}
 
-                        {/* ADIM 2: SİGORTA FORMU ÖNİZLEME */}
                         {currentStep === 2 && (
                             <div className="space-y-6">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-3 gap-2">
@@ -942,14 +1185,16 @@ export default function Dashboard({
 
                                 <div className="border border-slate-400 bg-white p-6 md:p-8 max-w-2xl mx-auto shadow-xs text-slate-900 text-xs font-serif leading-relaxed">
                                     <h4 className="text-center font-black text-sm border-b-2 border-slate-900 pb-2 mb-4 uppercase tracking-wide">
-                                        ÇANKAYA ÜNİVERSİTESİ ZORUNLU STAJYER
-                                        ÖĞRENCİ SİGORTA GİRİŞ FORMU
+                                        {t.step2.formHeader}
                                     </h4>
                                     <table className="w-full border-collapse mb-6 text-[11px] font-sans">
                                         <tbody>
                                             <tr className="border-b border-slate-200">
                                                 <td className="py-2 font-bold w-1/2">
-                                                    Eğitim-Öğretim Yılı
+                                                    {
+                                                        t.genericLabels
+                                                            .academicYear
+                                                    }
                                                 </td>
                                                 <td className="py-2">
                                                     : {stajData.academicYear}
@@ -957,7 +1202,7 @@ export default function Dashboard({
                                             </tr>
                                             <tr className="border-b border-slate-200">
                                                 <td className="py-2 font-bold">
-                                                    Staj Ders Kodu
+                                                    {t.genericLabels.courseCode}
                                                 </td>
                                                 <td className="py-2">
                                                     : {stajData.courseCode}
@@ -965,7 +1210,7 @@ export default function Dashboard({
                                             </tr>
                                             <tr className="border-b border-slate-200">
                                                 <td className="py-2 font-bold">
-                                                    Öğrenci Okul Numarası
+                                                    {t.genericLabels.studentNo}
                                                 </td>
                                                 <td className="py-2">
                                                     : {studentNo}
@@ -973,7 +1218,7 @@ export default function Dashboard({
                                             </tr>
                                             <tr className="border-b border-slate-200">
                                                 <td className="py-2 font-bold">
-                                                    Öğrenci TC Kimlik No
+                                                    {t.genericLabels.tcNo}
                                                 </td>
                                                 <td className="py-2">
                                                     :{" "}
@@ -983,19 +1228,17 @@ export default function Dashboard({
                                             </tr>
                                             <tr className="border-b border-slate-200">
                                                 <td className="py-2 font-bold">
-                                                    Öğrenci Adı Soyadı
+                                                    {t.genericLabels.firstName}{" "}
+                                                    / {t.genericLabels.lastName}
                                                 </td>
                                                 <td className="py-2">
-                                                    :{" "}
-                                                    {stajData.firstName ||
-                                                        "•••••"}{" "}
-                                                    {stajData.lastName ||
-                                                        "•••••"}
+                                                    : {stajData.firstName}{" "}
+                                                    {stajData.lastName}
                                                 </td>
                                             </tr>
                                             <tr className="border-b border-slate-200">
                                                 <td className="py-2 font-bold">
-                                                    Öğrenci Cep Telefonu
+                                                    {t.genericLabels.phone}
                                                 </td>
                                                 <td className="py-2">
                                                     :{" "}
@@ -1005,16 +1248,21 @@ export default function Dashboard({
                                             </tr>
                                             <tr className="border-b border-slate-200">
                                                 <td className="py-2 font-bold">
-                                                    Fakülte / Bölüm
+                                                    {t.genericLabels.faculty} /{" "}
+                                                    {t.genericLabels.department}
                                                 </td>
                                                 <td className="py-2">
-                                                    : {stajData.faculty} /{" "}
-                                                    {stajData.department}
+                                                    :{" "}
+                                                    {t.genericLabels.faculty ===
+                                                    "Faculty"
+                                                        ? "Engineering / Computer Engineering"
+                                                        : "Mühendislik Fakültesi / Bilgisayar Mühendisliği"}
                                                 </td>
                                             </tr>
                                             <tr className="border-b border-slate-200">
                                                 <td className="py-2 font-bold">
-                                                    Staj Başlama / Bitiş Tarihi
+                                                    {t.genericLabels.startDate}{" "}
+                                                    / {t.genericLabels.endDate}
                                                 </td>
                                                 <td className="py-2">
                                                     :{" "}
@@ -1035,7 +1283,7 @@ export default function Dashboard({
                                             </tr>
                                             <tr className="border-b-2 border-slate-900">
                                                 <td className="py-2 font-bold">
-                                                    Staj Yeri Adı
+                                                    {t.genericLabels.company}
                                                 </td>
                                                 <td className="py-2 uppercase">
                                                     :{" "}
@@ -1046,27 +1294,18 @@ export default function Dashboard({
                                         </tbody>
                                     </table>
                                     <p className="text-[10px] text-justify font-sans italic text-slate-700 leading-normal mb-8">
-                                        Yukarıda belirttiğim Staj Başlama ve
-                                        Bitiş Tarihleri arasında zorunlu staj
-                                        programım kapsamında stajyer olarak
-                                        görev yapacağım. Sosyal Güvenlik
-                                        Kurumu'na Stajyer olarak İşe Giriş
-                                        Bildirimimin yapılmasını, durumumda
-                                        meydana gelebilecek değişiklikleri staj
-                                        başlangıç tarihimden yedi gün öncesine
-                                        kadar Kayıtlı Olduğum Bölüme bildirmeyi
-                                        taahhüt ederim.
+                                        {t.step2.declarationText}
                                     </p>
                                     <div className="grid grid-cols-2 gap-4 text-center text-[10px] font-sans">
                                         <div>
                                             <p className="font-bold text-slate-950">
-                                                Öğrenci İmza
+                                                {t.step2.signStudent}
                                             </p>
                                             <p className="mt-6 border-b border-slate-300 mx-8"></p>
                                         </div>
                                         <div>
                                             <p className="font-bold text-slate-950">
-                                                Bölüm Staj Onay
+                                                {t.step2.signDept}
                                             </p>
                                             <p className="mt-6 border-b border-slate-300 mx-8"></p>
                                         </div>
@@ -1084,7 +1323,6 @@ export default function Dashboard({
                             </div>
                         )}
 
-                        {/* ADIM 3: AMİR BİLGİLERİ */}
                         {currentStep === 3 && (
                             <div className="space-y-4">
                                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">
@@ -1108,8 +1346,7 @@ export default function Dashboard({
                                                     firstName: e.target.value,
                                                 })
                                             }
-                                            placeholder="Örn: Mehmet"
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#2f4973]"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none"
                                         />
                                     </div>
                                     <div>
@@ -1126,8 +1363,7 @@ export default function Dashboard({
                                                     lastName: e.target.value,
                                                 })
                                             }
-                                            placeholder="Örn: Şahin"
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#2f4973]"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none"
                                         />
                                     </div>
                                     <div>
@@ -1140,7 +1376,6 @@ export default function Dashboard({
                                             pattern="0[0-9]{10}"
                                             required
                                             placeholder="05XXXXXXXXX"
-                                            title="Lütfen telefon numarasını başında 0 olacak şekilde 11 hane og bitişik yazınız."
                                             value={supervisor.phone}
                                             onChange={(e) =>
                                                 setSupervisor({
@@ -1151,7 +1386,7 @@ export default function Dashboard({
                                                     ),
                                                 })
                                             }
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-mono focus:outline-none focus:border-[#2f4973]"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-mono"
                                         />
                                     </div>
                                     <div>
@@ -1169,7 +1404,7 @@ export default function Dashboard({
                                                 })
                                             }
                                             placeholder="kurumsal@firma.com"
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-mono focus:outline-none"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-mono"
                                         />
                                     </div>
                                     <div className="md:col-span-2 pt-4">
@@ -1184,7 +1419,6 @@ export default function Dashboard({
                             </div>
                         )}
 
-                        {/* ADIM 4: DEVLET KATKISI VE ONAY */}
                         {currentStep === 4 && (
                             <div className="space-y-4">
                                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">
@@ -1221,6 +1455,9 @@ export default function Dashboard({
                     </div>
                 </main>
             )}
+            <span className="text-center text-[10px] text-slate-400 font-mono font-medium py-6 tracking-wide pointer-events-none">
+                Çankaya University Computer Engineering Faculty Portal © 2026
+            </span>
         </div>
     );
 }

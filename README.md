@@ -1,81 +1,116 @@
-# Internship Information System (IIS) Simulation
+# CENG Staj Bilgi Sistemi (IIS Prototipi)
 
-Bu proje, bir üniversitenin Bilgisayar Mühendisliği Bölümü için geliştirilmiş modern, güvenli ve adımsal (stepper-driven) bir **Staj Bilgi Sistemi Frontend Simülasyonudur**. Eski ve hantal otomasyon arayüzleri yerine; sıkı form doğrulamaları, dinamik belge üretim havuzları ve esnek durum yönetimleri barındıran modern bir SaaS (yazılım) çizgisi hedeflenerek inşa edilmiştir.
+Bu proje, Çankaya Üniversitesi Bilgisayar Mühendisliği Bölümü için geliştirilmiş modern, güvenli ve adımsal (stepper-driven) bir **Staj Bilgi Sistemi (IIS) Prototipidir**. 
 
-## 🚀 Öne Çıkan Özellikler
+Proje, frontend durum yönetimi, tam doğrulamalı form akışları, otomatik yasal belge üretimi ve PostgreSQL veritabanı bağlantılı gerçekçi bir .NET backend katmanı barındıran tam donanımlı (Full-Stack) bir uygulamadır.
 
-- **Gelişmiş Kayıt & Güvenlik Kapısı:**
-    - **Algoritmik E-Posta Eşleşmesi:** Öğrenci numarası girildiği an (`20XXXXXXX`), üniversite kurumsal mail formatı (`cXXXXXXX@student.cankaya.edu.tr`) arka planda dinamik (derived state) olarak hesaplanır ve eşlenik olmayan kayıtlar engellenir.
-    - **Canlı Şifre Denetleyicisi:** 8-24 karakter arası uzunluk, en az 1 sayı ve en az 1 sembol yasal zorunlulukları, kullanıcı şifreyi yazdığı an dinamik tik (`✓`) ve çarpı (`✗`) işaretleriyle görsel olarak doğrulanır.
-    - **6 Haneli Güvenli OTP Simülasyonu:** Kayıt ve şifre sıfırlama adımlarında tarayıcı katmanında simüle edilen 6 haneli doğrulama kodları ile gatekeeper lojiği işletilir.
-- **Doğrusal İş Akışı (Multi-Step Stepper / Wizard Flow):**
-    - Giriş yapan kullanıcı doğrudan karmaşık bağlantılarla baş başa bırakılmaz. Soldan sağa akan 4 adımlı akıllı bir kılavuz barı ile yönlendirilir.
-    - Önceki adımlar eksiksiz tamamlanıp kaydedilmeden sonraki adımların kilitleri açılmaz (`maxUnlockedStep` durum makinesi kontrolü).
-- **Baskıya Hazır Resmi Belge Jeneratörü (Adım 2):**
-    - İlk adımda girilen yasal staj verileri (Firma adı, T.C. numarası, tarih aralıkları), Adım 2'deki resmi **Zorunlu Stajyer Öğrenci Sigorta Giriş Formu** şablonuna canlı enjekte edilir.
-    - A4 baskı standartlarına (`@media print`) tam uyumlu arayüz sayesinde tek tıkla resmi PDF çıktısı alınabilir.
-- **Başvuru Sonrası Yönetim Merkezi (Management Console):**
-    - Tüm adımlar tamamlanıp başvuru kilitlendiğinde (`isFinalized`), adımsal arayüz yerini tüm verilerin tek ekrandan izlenebildiği gelişmiş bir yönetim paneline bırakır.
-    - Öğrenci staj amiri bilgilerini, akademik parametrelerini veya işsizlik fonu devlet katkısı yasal beyanlarını bu panel üzerinden anlık revize edebilir.
-- **Tam Dil Senkronizasyonu (TR/EN Localization):**
-    - Dış vitrindeki mevzuatlardan, dashboard kılavuz butonlarına ve form hata mesajlarına kadar tüm sistem TR ve EN dillerine anlık olarak senkronize şekilde tercüme edilir.
+---
 
-## 🛠️ Kullanılan Teknolojiler
+## Öne Çıkan Özellikler
 
-- **Framework:** [React 18](https://react.dev/) (Functional Components, Hooks)
-- **Build Tool:** [Vite](https://vitejs.dev/) (Fast Light-weight Bundler)
-- **Styling:** [Tailwind CSS](https://tailwindcss.com/) (Utility-first framework)
-- **Code Quality:** [ESLint](https://eslint.org/) (Strict react-hooks rules)
+- **Adımsal Başvuru Sihirbazı (4-Step Stepper Wizard):** Öğrenciler CENG 200/300 başvurularını doğrusal bir akışla (Firma Bilgileri, Belge Onayı, Amir Bilgileri, Beyanlar) tamamlar. Adımlar tamamlandıkça bir sonraki aşama kilit açma mekanizmasıyla aktif hale gelir.
+- **Baskıya Hazır Resmi Belge Jeneratörü (Adım 2):** Girilen yasal staj verileri, resmi **Zorunlu Stajyer Öğrenci Sigorta Giriş Formu** şablonuna canlı enjekte edilir. A4 formatına tam uyumlu `@media print` tasarımı ile tek tıkla yazdırma veya PDF kaydetme imkanı sunar.
+- **Yönetim ve Takip Konsolu:** Başvuru kilitlendikten sonra (Finalized), adımsal sihirbaz yerini verilerin tek ekrandan izlenebildiği ve güncellenebildiği gelişmiş bir yönetim paneline bırakır.
+- **Kurumsal Güvenlik & Doğrulamalar:**
+  - **Canlı Şifre Denetleyicisi:** En az 8-24 karakter, 1 sayı, 1 büyük harf ve 1 sembol kuralları canlı doğrulanır.
+  - **Algoritmik E-Posta Eşleşmesi:** Öğrenci numarası girildiğinde Çankaya Üniversitesi kurumsal e-posta formatı otomatik hesaplanır.
+  - **BCrypt Şifreleme:** Backend tarafında kullanıcı şifreleri BCrypt algoritması ile güvenli şekilde hash'lenerek veritabanına mühürlenir.
+- **Scalar API Playground:** Backend API uçları, modern ve karanlık temalı Scalar arayüzü ile dökümante edilmiştir.
 
-## 📁 Proje Yapısı
+---
+
+## Kullanılan Teknolojiler
+
+### Backend
+- **Framework:** .NET 10.0 Web API
+- **ORM:** Entity Framework Core
+- **Database:** PostgreSQL (Npgsql)
+- **API Documentation:** Scalar.AspNetCore (OpenAPI v1.json)
+- **Security:** BCrypt.Net-Next
+
+### Frontend
+- **Framework:** React 19 (Functional Components, Hooks)
+- **Build Tool:** Vite
+- **Styling:** Tailwind CSS & Vanilla CSS (Kurumsal renk paletleri)
+- **Localization:** TR/EN tam dil senkronizasyonu
+
+---
+
+## Proje Yapısı
 
 ```text
-src/
-├── assets/
-│   └── bilgisayar.png        # Kurumsal logo ve amblemler
-├── components/
-│   ├── LoginPortal.jsx      # Giriş, Kayıt, Canlı Şifre Kriterleri & OTP Katmanı
-│   └── Dashboard.jsx        # Stepper, Form Girişleri, Yazdırılabilir PDF & Kontrol Paneli
-├── App.jsx                  # Ana Trafik Denetleyicisi, Dil Sözlükleri & Dış Vitrin
-├── App.css                  # Kurumsal renk paletleri ve genel stil override kuralları
-└── main.jsx                 # Uygulama kök render noktası
+cengstaj-prototip/
+├── CengStaj.Backend/          # .NET 10 Web API Backend Uygulaması
+│   ├── Controllers/           # Auth ve Internship Controller Sınıfları
+│   ├── Data/                  # DbContext ve Veritabanı Yapılandırması
+│   ├── Models/                # Entity Modelleri (Student, Internship, Supervisor)
+│   ├── Program.cs             # API Başlangıç Noktası ve Servis Tanımları
+│   └── appsettings.json       # Veritabanı Bağlantı Dizesi ve Konfigürasyonlar
+│
+├── CengStaj.Frontend/         # React + Vite Frontend Uygulaması
+│   └── src/
+│       ├── components/        # LoginPortal ve Dashboard Bileşenleri
+│       ├── App.jsx            # Ana Yönlendirici, Dış Vitrin ve Dil Tercihleri
+│       └── App.css            # Kurumsal Stil Kuralları
+│
+├── cengstaj.bat               # Windows Yönetim ve Kolay Çalıştırma Betiği
+├── cengstaj.sh                # macOS/Linux Yönetim ve Kolay Çalıştırma Betiği
+└── docker-compose.yml         # PostgreSQL ve pgAdmin Servis Konfigürasyonu
 ```
 
-## 💻 Kurulum ve Çalıştırma
+---
 
-Projeyi yerel bilgisayarınızda ayağa kaldırmak için aşağıdaki adımları takip edebilirsiniz:
+## Kurulum ve Çalıştırma
 
-1. **Depoyu Klonlayın:**
+Projeyi yerel ortamınızda ayağa kaldırmak için işletim sisteminize uygun betiği kullanabilirsiniz (macOS/Linux için `cengstaj.sh`, Windows için `cengstaj.bat`).
 
+### 1. Bağımlılıkları Yükleyin ve Veritabanını Başlatın
+Kök dizinde şu komutla veritabanını başlatabilir, .NET bağımlılıklarını restore edebilir ve frontend bağımlılıklarını kurabilirsiniz:
+
+- **macOS/Linux:**
+  ```bash
+  chmod +x cengstaj.sh
+  ./cengstaj.sh install
+  ```
+- **Windows:**
+  ```cmd
+  cengstaj.bat install
+  ```
+
+### 2. Veritabanı Migrasyonlarını Çalıştırın
+Veritabanı tablolarını oluşturmak için:
 ```bash
-git clone https://github.com/yagizylldrm/cengstaj-prototip.git
-cd cengstaj-prototip
-
+cd CengStaj.Backend
+dotnet ef database update
+cd ..
 ```
 
-2. **Bağımlılıkları Yükleyin:**
+### 3. Tüm Sistemi Başlatın
+Docker veritabanını, arka planda .NET Web API backend'i ve ön planda React frontend'i tek komutla başlatabilirsiniz:
 
-```bash
-npm install
+- **macOS/Linux:**
+  ```bash
+  ./cengstaj.sh start
+  ```
+- **Windows:**
+  ```cmd
+  cengstaj.bat start
+  ```
 
-```
+*Bu komutla:*
+- *Docker veritabanı denetlenir ve başlatılır.*
+- *Backend API arka planda ayağa kalkar (macOS/Linux'ta loglar `backend.log` dosyasına yazılır, Windows'ta simge durumunda küçültülmüş ayrı bir komut penceresinde çalışır) ve **`http://localhost:5202/scalar/v1`** adresinde API dökümantasyonunu sunar.*
+- *React frontend geliştirme sunucusu ön planda çalışarak tarayıcınızda otomatik olarak açılır.*
+- *macOS/Linux'ta terminalde `Ctrl+C` yaptığınızda, betik otomatik olarak arka plandaki .NET sürecini güvenle sonlandırır.*
 
-3. **Geliştirici Sunucusunu Başlatın:**
+---
 
-```bash
-npm run dev
+## Yönetim Betiği Komutları
 
-```
-
-Tarayıcınızda `http://localhost:5173` adresine giderek projeyi canlı olarak test edebilirsiniz.
-
-4. **Üretim (Production) Derlemesi Almak İçin:**
-
-```bash
-npm run build
-
-```
-
-## ⚙️ Lisans ve Kullanım Kuralları
-
-Bu proje eğitim, frontend durum mimarisi simülasyonu ve UI/UX prototipleme amacıyla geliştirilmiştir. Herhangi bir ticari ya da resmi veri tabanı bağlantısı (backend) barındırmaz, veriler yerel React state'leri üzerinde simüle edilir.
+Kök dizinde yer alan `cengstaj.sh` ve `cengstaj.bat` şu komutları destekler:
+- `install` -> Docker veritabanını başlatır, .NET bağımlılıklarını restore eder ve frontend bağımlılıklarını (`npm install`) yükler.
+- `start` -> Veritabanını, backend API'yi ve React frontend'i aynı anda başlatır.
+- `dev` -> Sadece React geliştirici sunucusunu ayağa kaldırır.
+- `build` -> React uygulamasını üretim (production) ortamı için derler.
+- `clean` -> Derleme çıktılarını ve logları siler, Docker veritabanı konteynerlerini durdurur (`docker compose down`).
+- `reset` -> Tüm önbellek, bağımlılık ve konteynerleri temizleyip sıfırdan temiz kurulum yapar.

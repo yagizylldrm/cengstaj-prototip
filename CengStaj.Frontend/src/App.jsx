@@ -2,7 +2,7 @@ import { useState } from "react";
 import "./App.css";
 import okulLogosu from "./assets/bilgisayar.png";
 import LoginPortal from "./components/LoginPortal";
-import Dashboard from "./components/Dashboard"; // Yeni bağımsız dosya içeri alındı
+import Dashboard from "./components/Dashboard";
 
 const menuKeys = ["Home", "Announcement", "Guidelines", "FAQ", "Login"];
 
@@ -231,13 +231,12 @@ export default function CengInternshipPortal() {
     const [lang, setLang] = useState("tr");
     const [activeTab, setActiveTab] = useState("Home");
 
-    // Yasal oturum durum takipleri
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [studentNo, setStudentNo] = useState("");
 
     const t = translations[lang];
 
-    // 🛑 KONTROL ADIMI 1: Giriş Yapıldıysa, tüm vitrini kapatıp YENİ BAĞIMSIZ DASHBOARD'a yönlendir
+    // KONTROL ADIMI 1: Giriş Yapıldıysa, tüm vitrini kapatıp YENİ BAĞIMSIZ DASHBOARD'a yönlendir
     if (isLoggedIn) {
         return (
             <Dashboard
@@ -246,14 +245,14 @@ export default function CengInternshipPortal() {
                 studentNo={studentNo}
                 onLogout={() => {
                     setIsLoggedIn(false);
-                    setActiveTab("Home"); // Çıkış yapınca ana vitrine güvenle salla
+                    setActiveTab("Home");
                 }}
                 logo={okulLogosu}
             />
         );
     }
 
-    // 🛑 KONTROL ADIMI 2: Giriş sekmesi seçildi ama oturum yoksa izole aspx sayfasına yönlendir
+    // KONTROL ADIMI 2: Giriş sekmesi seçildi ama oturum yoksa izole aspx sayfasına yönlendir
     if (activeTab === "Login" && !isLoggedIn) {
         return (
             <LoginPortal
@@ -441,7 +440,7 @@ export default function CengInternshipPortal() {
                     </div>
                 </section>
 
-                {/* ✉️ SAĞ PANEL: KALICI RESMİ İLETİŞİM BLOKU */}
+                {/* SAĞ PANEL: KALICI RESMİ İLETİŞİM BLOKU */}
                 <section className="space-y-6">
                     <div className="bg-white border border-slate-300 border-t-4 border-t-cu-lacivert rounded shadow-sm p-6">
                         <h3 className="font-bold text-sm text-cu-lacivert uppercase tracking-wider border-b border-slate-100 pb-3 mb-4">
