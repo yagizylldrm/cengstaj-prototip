@@ -16,11 +16,11 @@ export default function LoginPortal({
     // --- 🔐 CANLI ŞİFRE KRİTER KONTROLLERİ ---
     const isLengthValid = password.length >= 8 && password.length <= 24;
     const isNumberValid = /[0-9]/.test(password);
+    const isUppercaseValid = /[A-Z]/.test(password);
     const isSymbolValid =
         /^(?=.*[^A-Za-z0-9]).*$/.test(password) || /[\W_]/.test(password);
 
     // --- 📧 TÜRETİLMİŞ STATE (DERIVED STATE) ---
-    // Kesinlikle useEffect veya setEmail kullanılmaz, ESLint hatasını kökten çözer!
     const email =
         studentNo.trim().startsWith("20") && studentNo.length === 9
             ? `c${studentNo.substring(2)}@student.cankaya.edu.tr`.toLowerCase()
@@ -38,7 +38,7 @@ export default function LoginPortal({
             registerBtn: "Hesap Oluştur ve Kod Gönder",
             verifyBtn: "Kodu Doğrula ve Devam Et",
             createAcc: "Kayıt Ol",
-            forgotPass: "Şifremi Unuttum",
+            forgotPass: "Şifremi Umuttum",
             hasAcc: "Zaten bir hesabım var? Giriş Yap",
             backBtn: "← Ana Sayfaya Dön",
             alertErr: "Lütfen gerekli tüm alanları doldurunuz!",
@@ -49,6 +49,7 @@ export default function LoginPortal({
                 "Hesabınız başarıyla onaylandı! Şimdi giriş yapabilirsiniz.",
             critLength: "8 - 24 karakter arası",
             critNumber: "En az 1 rakam/sayı",
+            critUppercase: "En az 1 büyük harf",
             critSymbol: "En az 1 sembol/özel karakter",
             forgotTitle: "🔐 Şifre Sıfırlama Talebi",
             resetTitle: "🔄 Yeni Şifre Belirleme",
@@ -78,6 +79,7 @@ export default function LoginPortal({
             otpSuccess: "Account successfully verified! You can now log in.",
             critLength: "8 - 24 characters",
             critNumber: "At least 1 number",
+            critUppercase: "At least 1 uppercase letter",
             critSymbol: "At least 1 symbol",
             forgotTitle: "🔐 Password Reset Request",
             resetTitle: "🔄 Set New Password",
@@ -108,7 +110,12 @@ export default function LoginPortal({
             );
             return;
         }
-        if (!isLengthValid || !isNumberValid || !isSymbolValid) {
+        if (
+            !isLengthValid ||
+            !isNumberValid ||
+            !isUppercaseValid ||
+            !isSymbolValid
+        ) {
             alert(
                 lang === "tr"
                     ? "Lütfen tüm şifre kriterlerini sağlayın!"
@@ -156,7 +163,12 @@ export default function LoginPortal({
 
     const handleResetPasswordSubmit = (e) => {
         e.preventDefault();
-        if (!isLengthValid || !isNumberValid || !isSymbolValid) {
+        if (
+            !isLengthValid ||
+            !isNumberValid ||
+            !isUppercaseValid ||
+            !isSymbolValid
+        ) {
             alert(
                 lang === "tr"
                     ? "Lütfen yeni şifre için tüm kuralları sağlayın!"
@@ -327,6 +339,12 @@ export default function LoginPortal({
                                 <p>{t.critLength}</p>
                             </div>
                             <div
+                                className={`flex items-center gap-2 ${isUppercaseValid ? "text-emerald-600" : "text-rose-600"}`}
+                            >
+                                <span>{isUppercaseValid ? "✓" : "✗"}</span>{" "}
+                                <p>{t.critUppercase}</p>
+                            </div>
+                            <div
                                 className={`flex items-center gap-2 ${isNumberValid ? "text-emerald-600" : "text-rose-600"}`}
                             >
                                 <span>{isNumberValid ? "✓" : "✗"}</span>{" "}
@@ -472,6 +490,12 @@ export default function LoginPortal({
                             >
                                 <span>{isLengthValid ? "✓" : "✗"}</span>{" "}
                                 <p>{t.critLength}</p>
+                            </div>
+                            <div
+                                className={`flex items-center gap-2 ${isUppercaseValid ? "text-emerald-600" : "text-rose-600"}`}
+                            >
+                                <span>{isUppercaseValid ? "✓" : "✗"}</span>{" "}
+                                <p>{t.critUppercase}</p>
                             </div>
                             <div
                                 className={`flex items-center gap-2 ${isNumberValid ? "text-emerald-600" : "text-rose-600"}`}
